@@ -1,21 +1,13 @@
 import numpy as np
-from pandas.core.frame import DataFrame
 from scipy.spatial.distance import pdist, squareform
-from scipy import exp
 from sklearn.neighbors import NearestNeighbors
 from scipy.sparse.csgraph import connected_components
-
-
-def affinity(data, epsilon):
-    distances = squareform(pdist(data, metric='sqeuclidean'))
-    return exp(-distances / epsilon ** 2)
+from pycondense.kernels import gaussian
 
 
 class Condensator:
     def __init__(self, data, **kwargs):
         self.data = data
-        if isinstance(data, DataFrame):
-            self.data = data.values
         if 'n' in kwargs:
             self.n = kwargs['n']
         else:
@@ -34,10 +26,10 @@ class Condensator:
             self.weights = kwargs['weights']
         else:
             self.weights = np.ones(self.data.shape[0])
-        if 'affinity' in kwargs:
-            self.affinityfn = kwargs['affinity']
+        if 'kernel' in kwargs:
+            self.kernel = kwargs['kernel']
         else:
-            self.affinityfn = affinity
+            self.kernel = gaussian
         if 'i' in kwargs:
             self.i = kwargs['i']
         else:
@@ -52,24 +44,24 @@ class Condensator:
     def iter(self):
         idx, generator = dict([(k, {k}) for k in range(self.data.shape[0])]), self
         while len(generator.data) > self.n:
-            assigments, generator = generator.next()
+            assigments, generator = generator.next(idx)
             if assigments:
-                idx = dict([(k, set([x for s in [idx[i] for i in v] for x in s])) for k, v in assigments.items( )])
+                idx = dict([(k, set([x for s in [idx[i] for i in v] for x in s])) for k, v in assigments.items()])
             yield idx
 
-    def next(self):
-        [merged, condensed, weights] = self.merge( self.diffuse( ) )
+    def next(self, idx):
+        [merged, condensed, weights] = self.merge(self.diffuse(idx=idx))
         return merged, Condensator(condensed, sigma=self.sigma, n=self.n,
-                                   epsilon= self.epsilon * 1.05 if self.i % 200 == 0 and not merged else self.epsilon,
-                                   weights=weights, affinity=self.affinityfn, i=self.i + 1 if not merged else 1)
+                                   epsilon=self.epsilon * 1.05 if self.i % 200 == 0 and not merged else self.epsilon,
+                                   weights=weights, kernel=self.kernel, i=self.i + 1 if not merged else 1)
 
-    def diffuse(self) -> np.array:
-        affinity = self.affinity()
+    def diffuse(self, **kwargs) -> np.array:
+        affinity = self.affinity(**kwargs)
         norm = (affinity / affinity.sum(1)).transpose()
         data = np.linalg.matrix_power(norm, 2) @ self.data
         return data
 
-    def merge(self, diffused ):
+    def merge(self, diffused):
         distances = squareform(pdist(diffused, metric='sqeuclidean'))
         filtered = (distances < self.sigma ** 2) - np.eye(len(distances))
         n, labels = connected_components(filtered)
@@ -80,10 +72,10 @@ class Condensator:
             data = np.zeros([n, diffused.shape[1]])
             weights = np.zeros(n)
             for label in np.unique(labels):
-                merged[label] = set(np.where(labels == label)[0].tolist( ))
+                merged[label] = set(np.where(labels == label)[0].tolist())
                 data[label] = np.average(diffused[labels == label], axis=0, weights=self.weights[labels == label])
                 weights[label] = sum(self.weights[labels == label])
             return merged, data, weights
 
-    def affinity(self):
-        return self.affinityfn(self.data, self.epsilon)
+    def affinity(self, **kwargs):
+        return self.kernel(self.data, self.epsilon, **kwargs)
