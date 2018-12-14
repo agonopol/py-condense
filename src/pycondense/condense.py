@@ -4,7 +4,6 @@ from sklearn.neighbors import NearestNeighbors
 from scipy.sparse.csgraph import connected_components
 from pycondense.kernels import gaussian
 
-
 class Condensator:
     def __init__(self, data, **kwargs):
         self.data = data
@@ -52,7 +51,7 @@ class Condensator:
     def next(self, idx):
         [merged, condensed, weights] = self.merge(self.diffuse(idx=idx))
         return merged, Condensator(condensed, sigma=self.sigma, n=self.n,
-                                   epsilon=self.epsilon * 1.05 if self.i % 200 == 0 and not merged else self.epsilon,
+                                   epsilon=self.epsilon * 1.05 if self.i % 10 == 0 and not merged else self.epsilon,
                                    weights=weights, kernel=self.kernel, i=self.i + 1 if not merged else 1)
 
     def diffuse(self, **kwargs) -> np.array:
