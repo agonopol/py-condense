@@ -1,6 +1,4 @@
-from typing import Optional, Any
-
-import numpy as np, math
+import numpy as np
 from pandas.core.frame import DataFrame
 from scipy.spatial.distance import pdist, squareform
 from scipy import exp
@@ -89,13 +87,3 @@ class Condensator:
 
     def affinity(self):
         return self.affinityfn(self.data, self.epsilon)
-
-
-if __name__ == '__main__':
-    import scipy.io as sio
-    import os
-
-    sample = sio.loadmat(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "data", "circles.mat"))
-    condesator = Condensator(sample['data'])
-    for i, assigment in enumerate(condesator.contract()):
-        print(i, assigment)
