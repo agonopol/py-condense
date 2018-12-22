@@ -4,6 +4,7 @@ from sklearn.neighbors import NearestNeighbors
 from scipy.sparse.csgraph import connected_components
 from pycondense.kernels import gaussian
 
+
 class Condensator:
     def __init__(self, data, **kwargs):
         self.data = data

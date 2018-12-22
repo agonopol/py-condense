@@ -1,17 +1,20 @@
-from scipy import exp
 import numpy as np
-from pycondense.kernels.gaussian import gaussian
 from functools import partial
+from scipy import exp
+from scipy.spatial.distance import cdist
 
 
-def __mgc__(data, diffused, epsilon, **kwargs):
-    idx = kwargs['idx']
-    seed = np.linalg.matrix_power( gaussian(data, epsilon, **kwargs), 2 )
-    kernel = np.zeros((diffused.shape[0], diffused.shape[0]))
-    for i, sources in idx.items():
-        for j, sinks in idx.items( ):
-            kernel[i, j] = np.mean(seed[list(sources), list(sinks)])
-    return kernel
+def __mgc__(x, y, epsilon, **kwargs):
+    ytox = gaussian(y, x, epsilon)
+    xtoy = gaussian(x, y, epsilon)
+    kernel = np.matmul(ytox, xtoy)
+    return (kernel + np.transpose(kernel)) / 2.0;
+
+
+def gaussian(x, y, epsilon):
+    distances = cdist(x, y, metric='sqeuclidean')
+    return exp(-distances / epsilon ** 2)
+
 
 def mgc(data):
     return partial(__mgc__, data)

@@ -22,12 +22,6 @@ def test_affinity(circles):
     assert affinity is not None
     assert affinity[0, 1] == pytest.approx(0.778798853737574, .001)
 
-
-def test_contraction(circles):
-    condesator = Condensator(circles)
-    contraction = condesator.contract()
-    assert contraction is not None
-
 def test_affinity_matrix():
     import scipy.io as sio
     import os
