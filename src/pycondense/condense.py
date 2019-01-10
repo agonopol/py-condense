@@ -6,16 +6,12 @@ from pycondense.kernels import gaussian
 
 
 class Condensator:
-    def __init__(self, data, **kwargs):
+    def __init__(self, data, kernel=gaussian, k=2, t=2, sigma=np.spacing(1e3),  **kwargs):
         self.data = data
-        if 'n' in kwargs:
-            self.n = kwargs['n']
-        else:
-            self.n = 2
-        if 'sigma' in kwargs:
-            self.sigma = kwargs['sigma']
-        else:
-            self.sigma = np.spacing(1)
+        self.k = k
+        self.kernel = kernel
+        self.sigma = sigma
+        self.t = t
         if 'epsilon' in kwargs:
             self.epsilon = kwargs['epsilon']
         else:
@@ -26,10 +22,6 @@ class Condensator:
             self.weights = kwargs['weights']
         else:
             self.weights = np.ones(self.data.shape[0])
-        if 'kernel' in kwargs:
-            self.kernel = kwargs['kernel']
-        else:
-            self.kernel = gaussian
         if 'i' in kwargs:
             self.i = kwargs['i']
         else:
@@ -37,33 +29,34 @@ class Condensator:
 
     def cluster(self):
         assigments = dict([(k, {k}) for k in range(self.data.shape[0])])
-        for assigments in self.iter():
+        centeroids = self.data
+        for assigments, centeroids in self.iter():
             pass
-        return assigments
+        return assigments, centeroids
 
     def iter(self):
         idx, generator = dict([(k, {k}) for k in range(self.data.shape[0])]), self
-        while len(generator.data) > self.n:
+        while len(generator.data) > self.k:
             assigments, generator = generator.next(idx)
             if assigments:
                 idx = dict([(k, set([x for s in [idx[i] for i in v] for x in s])) for k, v in assigments.items()])
-            yield idx
+            yield idx, generator.data
 
     def next(self, idx):
         [merged, condensed, weights] = self.merge(self.diffuse(idx=idx))
-        return merged, Condensator(condensed, sigma=self.sigma, n=self.n,
+        return merged, Condensator(condensed, sigma=self.sigma, n=self.k,
                                    epsilon=self.epsilon * 1.05 if self.i % 10 == 0 and not merged else self.epsilon,
                                    weights=weights, kernel=self.kernel, i=self.i + 1 if not merged else 1)
 
     def diffuse(self, **kwargs) -> np.array:
         affinity = self.affinity(**kwargs)
         norm = (affinity / affinity.sum(1)).transpose()
-        data = np.linalg.matrix_power(norm, 2) @ self.data
+        data = np.linalg.matrix_power(norm, self.t) @ self.data
         return data
 
     def merge(self, diffused):
         distances = squareform(pdist(diffused, metric='sqeuclidean'))
-        filtered = (distances < self.sigma ** 2) - np.eye(len(distances))
+        filtered = (distances < self.sigma) - np.eye(len(distances))
         n, labels = connected_components(filtered)
         if n == len(filtered):
             return {}, diffused, np.ones(diffused.shape[0])

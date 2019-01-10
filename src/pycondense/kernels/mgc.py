@@ -4,7 +4,7 @@ from scipy import exp
 from scipy.spatial.distance import cdist
 
 
-def __mgc__(x, y, epsilon, **kwargs):
+def __mgc__(x, y, epsilon, **kwargs) -> np.array:
     ytox = gaussian(y, x, epsilon)
     xtoy = gaussian(x, y, epsilon)
     kernel = np.matmul(ytox, xtoy)
